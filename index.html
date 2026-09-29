@@ -1,0 +1,1344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vertex Command: Quadratic Artillery</title>
+<meta name="description" content="A tank artillery game for graphing quadratics in vertex and standard form.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Black+Ops+One&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hq:#2B3321;
+    --olive:#3A452E;
+    --olive-deep:#29311F;
+    --line:#57643F;
+    --bone:#EFE9D4;
+    --bone-dim:#C4BEA3;
+    --paper:#E9E3C9;
+    --ca:#F4AE45;   /* a */
+    --ch:#62C6EC;   /* h */
+    --ck:#F27DB5;   /* k */
+    --cb:#A6D98E;   /* b */
+    --cc:#C9B3F2;   /* c */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--hq);color:var(--bone);
+    font-family:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+    font-size:16px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  button,input{font:inherit;color:inherit}
+  :focus-visible{outline:3px solid var(--ch);outline-offset:2px}
+
+  .top{
+    display:flex;align-items:center;gap:18px;
+    padding:10px 20px;background:var(--olive-deep);
+    border-bottom:3px solid #1C2215;
+  }
+  .brand{
+    font-family:'Black Ops One',Impact,'Arial Black',sans-serif;
+    font-size:clamp(22px,3vw,32px);letter-spacing:.03em;line-height:1;
+    color:var(--bone);
+  }
+  .mode-name{color:var(--bone-dim);font-weight:500;font-size:17px}
+  .top .btn{margin-left:auto}
+
+  .layout{
+    display:grid;grid-template-columns:minmax(0,1fr) 380px;
+    min-height:calc(100vh - 58px);
+  }
+  .stage{
+    display:flex;align-items:center;justify-content:center;
+    padding:16px;background:var(--hq);
+  }
+  .frame{
+    position:relative;
+    width:min(100%, calc((100vh - 96px) * 10 / 7));
+    aspect-ratio:10/7;
+    border-radius:6px;overflow:hidden;
+    box-shadow:0 0 0 3px #1C2215, 0 12px 30px rgba(0,0,0,.35);
+  }
+  canvas{display:block;width:100%;height:100%;touch-action:manipulation;cursor:default}
+  canvas:focus-visible{outline-offset:-3px}
+
+  .stage-msg{
+    position:absolute;bottom:14px;left:50%;transform:translate(-50%,8px);
+    background:rgba(35,40,28,.92);color:var(--bone);
+    padding:8px 16px;border-radius:6px;font-weight:700;font-size:18px;
+    border-left:5px solid var(--ca);
+    opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+    white-space:nowrap;
+  }
+  .stage-msg.show{opacity:1;transform:translate(-50%,0)}
+  .stage-msg.bad{border-left-color:var(--ck)}
+
+  .round-over{
+    position:absolute;inset:0;display:grid;place-items:center;
+    background:rgba(35,40,28,.6);
+  }
+  .round-over[hidden]{display:none}
+  .ro-card{
+    background:var(--olive);border:2px solid var(--line);border-radius:10px;
+    padding:22px 26px;max-width:340px;text-align:center;
+  }
+  .ro-card h2{font-family:'Black Ops One',Impact,sans-serif;font-weight:400;font-size:28px;margin:0 0 6px}
+  .ro-card p{margin:0 0 16px;color:var(--bone-dim)}
+
+  .panel{
+    background:var(--olive);border-left:3px solid #1C2215;
+    padding:22px 22px 28px;overflow-y:auto;max-height:calc(100vh - 58px);
+  }
+  [data-pane][hidden]{display:none}
+  .pane-title{
+    font-family:'Black Ops One',Impact,sans-serif;font-weight:400;
+    font-size:28px;line-height:1.1;margin:0 0 8px;
+  }
+  .lede{color:var(--bone-dim);margin:0 0 18px;max-width:60ch}
+
+  .modes{display:grid;gap:12px}
+  .mode-card{
+    display:grid;gap:2px;text-align:left;cursor:pointer;
+    background:var(--olive-deep);border:2px solid var(--line);border-radius:10px;
+    padding:14px 16px;
+  }
+  .mode-card:hover{border-color:var(--ca)}
+  .mc-name{font-family:'Black Ops One',Impact,sans-serif;font-size:22px;line-height:1.1}
+  .mc-sub{font-weight:600;color:var(--ca)}
+  .mc-desc{color:var(--bone-dim);font-size:15px;margin-top:4px}
+  .mode-card.locked{cursor:default;opacity:.55}
+  .mode-card.locked:hover{border-color:var(--line)}
+  .mode-card.locked .mc-sub{color:var(--bone-dim)}
+
+  .eq-block{margin-bottom:12px}
+  .eq-label{font-size:14px;font-weight:600;color:var(--bone-dim);margin-bottom:4px}
+  .eq{
+    background:var(--olive-deep);border:1px solid var(--line);border-radius:8px;
+    padding:10px 14px;min-height:54px;display:flex;align-items:center;flex-wrap:wrap;
+    font-size:clamp(21px,2.1vw,26px);font-weight:500;white-space:nowrap;
+  }
+  .eq i, .feats i, .ctl-label i, .key i, .status i, .preview i{font-style:italic;font-family:'Barlow',Georgia,serif}
+  .fr{
+    display:inline-flex;flex-direction:column;vertical-align:middle;
+    font-size:.6em;line-height:1.05;text-align:center;margin:0 .1em;
+  }
+  .fr > span:last-child{border-top:1.5px solid currentColor}
+  .ca{color:var(--ca)} .ch{color:var(--ch)} .ck{color:var(--ck)}
+  .cb{color:var(--cb)} .cc{color:var(--cc)}
+
+  .ctl{margin:16px 0 14px}
+  .ctl-label{font-weight:600;margin-bottom:6px}
+  .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .seg button{
+    background:var(--olive-deep);border:1.5px solid var(--line);border-radius:6px;
+    padding:6px 0;min-height:44px;cursor:pointer;font-weight:600;font-size:18px;
+  }
+  .seg button[aria-pressed="true"]{background:var(--ca);border-color:var(--ca);color:#2A2210}
+
+  .actions{display:flex;gap:10px;margin:4px 0 8px}
+  .btn{
+    border-radius:8px;padding:10px 18px;min-height:44px;cursor:pointer;
+    font-weight:700;font-size:17px;border:2px solid var(--bone-dim);background:transparent;
+  }
+  .btn.ghost:hover{border-color:var(--bone)}
+  .btn.fire{
+    background:var(--ca);border-color:var(--ca);color:#2A2210;
+    font-family:'Black Ops One',Impact,sans-serif;font-weight:400;font-size:20px;letter-spacing:.04em;
+    padding:10px 26px;
+  }
+  .btn.fire:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+
+  .status{min-height:3em;margin:6px 0 10px;font-weight:500}
+  .status.good{color:var(--ca)}
+  .status.bad{color:var(--ck)}
+  .score{color:var(--bone-dim);margin:0 0 16px;font-size:15px}
+
+  .feats{
+    display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:8px 0 16px;
+    padding:12px 14px;border:1px solid var(--line);border-radius:8px;
+  }
+  .feats dt{color:var(--bone-dim);font-size:15px}
+  .feats dd{margin:0;font-weight:600}
+  .feats .sub{display:block;font-weight:500;color:var(--bone-dim);font-size:14px}
+
+  .toggles{display:flex;flex-wrap:wrap;gap:8px}
+  .toggles label{
+    display:flex;align-items:center;gap:6px;cursor:pointer;font-size:15px;
+    border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;
+  }
+  .toggles input{accent-color:var(--ca);width:17px;height:17px}
+
+  .g-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .g-head .round{font-family:'Black Ops One',Impact,sans-serif;font-size:26px}
+  .g-head .gscore{color:var(--bone-dim);font-size:15px}
+  .lock{font-weight:700;font-size:18px;margin:4px 0 10px}
+  .lock .coords{color:var(--bone);background:var(--olive-deep);border-radius:6px;padding:2px 8px;margin-left:4px}
+  .eq.fill{display:block;white-space:nowrap;overflow-x:auto;font-size:clamp(19px,2vw,24px);line-height:2}
+  .blank{
+    width:2.4em;text-align:center;font-size:.9em;font-weight:600;
+    background:#20271A;border:2px solid;border-radius:6px;padding:2px 2px;margin:0 .15em;
+    -moz-appearance:textfield;appearance:textfield;
+  }
+  .blank::-webkit-outer-spin-button,.blank::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .blank.bh{border-color:var(--ch);color:var(--ch)}
+  .blank.bk{border-color:var(--ck);color:var(--ck)}
+  .blank::placeholder{color:inherit;opacity:.55;font-style:italic}
+  .preview{min-height:2.2em;margin:8px 0 12px;color:var(--bone-dim);font-size:17px}
+  .key{
+    margin-top:18px;padding:12px 14px;border-left:4px solid var(--ch);
+    background:var(--olive-deep);border-radius:0 8px 8px 0;font-size:15px;color:var(--bone-dim);
+  }
+  .key strong{color:var(--bone)}
+
+  @media (max-width: 900px){
+    .layout{grid-template-columns:1fr;min-height:0}
+    .stage{padding:10px}
+    .frame{width:100%}
+    .panel{border-left:0;border-top:3px solid #1C2215;max-height:none}
+    .top .mode-name{display:none}
+    .top{padding:8px 12px}
+    .top .btn{padding:6px 12px;font-size:15px;min-height:40px}
+    .frame{aspect-ratio:1/1}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .stage-msg{transition:none}
+  }
+  .work{
+    background:var(--olive-deep);border:1px solid var(--line);border-radius:8px;
+    padding:8px 14px;font-size:19px;line-height:1.9;overflow-x:auto;
+  }
+  .work div{white-space:nowrap}
+  .work .dim{color:var(--bone-dim);font-size:15px}
+  .work i, .steps i, .final i{font-style:italic}
+  .blank{width:3em}
+  .blank.bn{border-color:var(--bone-dim);color:var(--bone)}
+  .blank.ok{border-color:var(--cb);color:var(--cb);-webkit-text-fill-color:var(--cb)}
+  .blank.bad{border-color:var(--ck);background:#3A1F2C}
+  .blank:disabled{opacity:1}
+  .steps{list-style:none;margin:0 0 10px;padding:0;counter-reset:st;display:grid;gap:10px}
+  .steps li{counter-increment:st;border-left:3px solid var(--line);padding:2px 0 2px 12px}
+  .steps li[hidden]{display:none}
+  .steps li.cur{border-left-color:var(--ca)}
+  .steps li.done{border-left-color:var(--cb)}
+  .steps .sp{font-size:15px;color:var(--bone-dim);font-weight:600}
+  .steps .sp::before{content:counter(st) ". ";color:var(--bone)}
+  .steps .se{font-size:20px;line-height:2.1;white-space:nowrap;overflow-x:auto;padding-bottom:2px}
+  .steps .se .given{color:var(--bone-dim)}
+  .fin{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;margin:0 .15em}
+  .fin .bar{width:100%;height:2px;background:var(--bone);margin:3px 0}
+  .fin .blank{margin:0}
+  .final{
+    background:var(--olive-deep);border:1px solid var(--cb);border-radius:8px;
+    padding:8px 14px;margin:0 0 12px;font-size:20px;line-height:1.9;overflow-x:auto;
+  }
+  .final div{white-space:nowrap}
+  .lock .coords.cc{color:var(--cc)}
+  .c-actions{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">Vertex Command</div>
+  <div class="mode-name" id="modeName">Graphing quadratics with artillery</div>
+  <button class="btn ghost" id="toMenu" hidden>Change mode</button>
+</header>
+
+<main class="layout">
+  <section class="stage">
+    <div class="frame">
+      <canvas id="field" tabindex="0" aria-label="Battlefield graph. The ground is the x-axis and your tank sits at negative 10, 0."></canvas>
+      <div class="stage-msg" id="stageMsg" role="status" aria-live="polite"></div>
+      <div class="round-over" id="roundOver" hidden>
+        <div class="ro-card">
+          <h2 id="roTitle">Round cleared</h2>
+          <p id="roText"></p>
+          <button class="btn fire" id="nextRound">Start next round</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <!-- MENU -->
+    <section data-pane="menu">
+      <h1 class="pane-title">Graph the shot. Hit the target.</h1>
+      <p class="lede">Your tank sits at (−10, 0), and every shell flies along a parabola from it. The vertex is the top of the arc. Pick a mode to start.</p>
+      <div class="modes">
+        <button class="mode-card" data-mode="recruit">
+          <span class="mc-name">Recruit</span>
+          <span class="mc-sub">Training range</span>
+          <span class="mc-desc">Drag the vertex and watch a, both forms of the equation, and the arc change together.</span>
+        </button>
+        <button class="mode-card" data-mode="gunner">
+          <span class="mc-name">Gunner</span>
+          <span class="mc-sub">Target lock</span>
+          <span class="mc-desc">Tap a target's vertex, fill in h and k, and shoot down the drone on that arc.</span>
+        </button>
+        <button class="mode-card" data-mode="commander">
+          <span class="mc-name">Commander</span>
+          <span class="mc-sub">Solve for a</span>
+          <span class="mc-desc">The tank moves between firing spots, some up on hills. Plug its position into the vertex form and solve for a step by step.</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- RECRUIT -->
+    <section data-pane="recruit" hidden>
+      <div class="eq-block">
+        <div class="eq-label">Vertex form</div>
+        <div class="eq" id="rVertex"></div>
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">Standard form</div>
+        <div class="eq" id="rStandard"></div>
+      </div>
+      <div class="eq-block">
+        <div class="eq-label">Value of <i class="ca">a</i>, from the tank at (−10, 0)</div>
+        <div class="work" id="rA"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn fire" id="rFire">Fire</button>
+        <button class="btn ghost" id="rNew">Move target</button>
+      </div>
+      <p class="status" id="rStatus" aria-live="polite"></p>
+      <p class="score" id="rScore"></p>
+
+      <dl class="feats" id="rFeat"></dl>
+
+      <div class="toggles">
+        <label><input type="checkbox" id="tAxis" checked> Axis of symmetry</label>
+        <label><input type="checkbox" id="tYint" checked> <i>y</i>-intercept</label>
+        <label><input type="checkbox" id="tRoots" checked> <i>x</i>-intercepts</label>
+      </div>
+
+      <p class="key">Drag anywhere on the field to move the vertex. With the field selected, arrow keys move it and Enter fires.</p>
+    </section>
+
+    <!-- GUNNER -->
+    <section data-pane="gunner" hidden>
+      <div class="g-head">
+        <span class="round" id="gRound">Round 1</span>
+        <span class="gscore" id="gScore"></span>
+      </div>
+      <p class="lede" id="gIntro">Each dashed arc runs from your tank through a drone. Tap the crosshair at the top of an arc to lock on.</p>
+
+      <div id="gForm" hidden>
+        <div class="lock" id="gWhich"></div>
+        <div class="eq-label">Fill in the vertex form</div>
+        <div class="eq fill">
+          <i>y</i>&nbsp;=&nbsp;<span class="ca" id="gA"><i>a</i></span>(<i>x</i>&nbsp;−<input id="inH" class="blank bh" type="number" step="1" placeholder="h" aria-label="h, the x-coordinate of the vertex">)²&nbsp;+<input id="inK" class="blank bk" type="number" step="1" placeholder="k" aria-label="k, the y-coordinate of the vertex">
+        </div>
+        <div class="preview" id="gPreview" aria-live="polite"></div>
+        <button class="btn fire" id="gFire">Fire</button>
+      </div>
+      <p class="status" id="gStatus" aria-live="polite"></p>
+
+      <p class="key">In <strong><i>y</i> = <i class="ca">a</i>(<i>x</i> − <i class="ch">h</i>)² + <i class="ck">k</i></strong>, the vertex is (<i class="ch">h</i>, <i class="ck">k</i>). The value of <i class="ca">a</i> fills itself in, because every arc must pass through the tank at (−10, 0).</p>
+    </section>
+
+    <!-- COMMANDER -->
+    <section data-pane="commander" hidden>
+      <div class="g-head">
+        <span class="round" id="cRound">Round 1</span>
+        <span class="gscore" id="cScore"></span>
+      </div>
+      <p class="lede" id="cIntro">Each target has its own firing spot, marked with a flag. Some are on hills. Tap a crosshair to lock on, and the tank drives into position while you solve for <i class="ca">a</i>.</p>
+
+      <div id="cForm" hidden>
+        <div class="lock" id="cWhich"></div>
+        <ol class="steps" id="cSteps"></ol>
+        <div class="final" id="cFinal" hidden></div>
+        <div class="c-actions">
+          <button class="btn ghost" id="cCheck">Check step</button>
+          <button class="btn fire" id="cFire" hidden>Fire</button>
+        </div>
+      </div>
+      <p class="status" id="cStatus" aria-live="polite"></p>
+
+      <p class="key">Every arc passes through the tank. Substituting the tank's position for <i>x</i> and <i>y</i> in the vertex form leaves one unknown: <i class="ca">a</i>. On a hill, <i>y</i> isn't 0, so watch the left side.</p>
+    </section>
+  </aside>
+</main>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const rint = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+const MINUS = '−';
+const TANK = -10;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- fractions ---------- */
+const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; };
+const F = (n, d = 1) => { if (d < 0) { n = -n; d = -d; } const g = gcd(n, d); return { n: n / g, d: d / g }; };
+const val = f => f.n / f.d;
+// Arc through the tank (−10, 0): 0 = a(−10 − h)² + k  →  a = −k / (h + 10)²
+const aOf = (h, k) => F(-k, (h + 10) * (h + 10));
+const bFrom = (a, h) => F(-2 * a.n * h, a.d);
+const cFrom = (a, h, k) => F(a.n * h * h + k * a.d, a.d);
+const bOf = (h, k) => bFrom(aOf(h, k), h);
+const cOf = (h, k) => cFrom(aOf(h, k), h, k);
+const landOf = h => 2 * h + 10;
+
+const int = n => (n < 0 ? MINUS : '') + Math.abs(n);
+function num(x) {
+  if (Math.abs(x - Math.round(x)) < 1e-9) return int(Math.round(x));
+  return (x < 0 ? MINUS : '') + Math.abs(x).toFixed(2);
+}
+const dec = v => (v < 0 ? MINUS : '') + String(Number(Math.abs(v).toFixed(3)));
+function mag(f) {
+  return f.d === 1 ? String(f.n) : `<span class="fr"><span>${f.n}</span><span>${f.d}</span></span>`;
+}
+function fracHTML(f) { return (f.n < 0 ? MINUS : '') + mag({ n: Math.abs(f.n), d: f.d }); }
+function fracOrDec(f) { return f.d > 36 ? '≈&nbsp;' + dec(val(f)) : fracHTML(f); }
+function coefLead(f) {
+  const ab = { n: Math.abs(f.n), d: f.d };
+  return (f.n < 0 ? MINUS : '') + (ab.n === 1 && ab.d === 1 ? '' : mag(ab));
+}
+function vertexHTML(a, h, k) {
+  const aTxt = a.d > 36 ? '(' + dec(val(a)) + ')' : coefLead(a);
+  let s = `<i>y</i>&nbsp;${a.d > 36 ? '≈' : '='}&nbsp;<span class="ca">${aTxt}</span>`;
+  if (h === 0) s += '<i>x</i>²';
+  else s += `(<i>x</i>&nbsp;${h > 0 ? MINUS : '+'}&nbsp;<span class="ch">${Math.abs(h)}</span>)²`;
+  if (k !== 0) s += `&nbsp;${k > 0 ? '+' : MINUS}&nbsp;<span class="ck">${Math.abs(k)}</span>`;
+  return s;
+}
+function term(f, v, lead, cls, decimal) {
+  const x = val(f);
+  if (decimal ? Math.abs(x) < 5e-4 : f.n === 0) return '';
+  const neg = x < 0;
+  let m;
+  if (decimal) m = dec(Math.abs(x));
+  else { const ab = { n: Math.abs(f.n), d: f.d }; m = (v && ab.n === 1 && ab.d === 1) ? '' : mag(ab); }
+  if (lead) return `<span class="${cls}">${neg ? MINUS : ''}${m}</span>${v}`;
+  return `&nbsp;${neg ? MINUS : '+'}&nbsp;<span class="${cls}">${m}</span>${v}`;
+}
+function standardHTML(a, b, c) {
+  const decimal = Math.max(a.d, b.d, c.d) > 36;
+  return `<i>y</i>&nbsp;${decimal ? '≈' : '='}&nbsp;` + term(a, '<i>x</i>²', true, 'ca', decimal) +
+    term(b, '<i>x</i>', false, 'cb', decimal) + term(c, '', false, 'cc', decimal);
+}
+function aWorkHTML(h, k) {
+  const inside = TANK - h, sq = inside * inside, a = aOf(h, k);
+  let s = `<i class="ca">a</i>&nbsp;=&nbsp;−<span class="ck">${k}</span>&nbsp;÷&nbsp;(${int(inside)})²&nbsp;=&nbsp;−${k}&nbsp;÷&nbsp;${sq}`;
+  if (!(a.n === -k && a.d === sq)) s += `&nbsp;=&nbsp;<span class="ca">${fracHTML(a)}</span>`;
+  if (a.d > 36) s += `&nbsp;≈&nbsp;${dec(val(a))}`;
+  return s;
+}
+const flat = html => html.replace(/&nbsp;/g, ' ');
+
+/* ---------- canvas + coordinate window ---------- */
+const cv = $('field'), ctx = cv.getContext('2d');
+const WIN = { x0: -11, x1: 11, y0: -2, y1: 12 };
+let CW = 700, CH = 490, DPR = 1;
+function resize() {
+  const r = cv.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  CW = Math.max(1, r.width); CH = Math.max(1, r.height);
+  cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+new ResizeObserver(resize).observe(cv);
+resize();
+
+const X = x => (x - WIN.x0) / (WIN.x1 - WIN.x0) * CW;
+const Y = y => CH - (y - WIN.y0) / (WIN.y1 - WIN.y0) * CH;
+const iX = px => WIN.x0 + px / CW * (WIN.x1 - WIN.x0);
+const iY = py => WIN.y0 + (CH - py) / CH * (WIN.y1 - WIN.y0);
+const FS = () => clamp(CW / 58, 10, 15);
+const TS = () => clamp(CW / 26, 18, 38);
+
+const COL = {
+  paper: '#E9E3C9', grid: 'rgba(58,69,46,.13)', grid5: 'rgba(58,69,46,.3)', axis: '#3A452E',
+  ground: '#8A6A43', groundEdge: '#5E4527', groundText: '#F4EBD6', ink: '#23281C',
+  ca: '#B5640A', ch: '#14739A', ck: '#AE2C72', cc: '#6446A3',
+  player: '#5A6B3B', enemy: '#9A3F2C', wreck: '#3F3933', hill: '#957548'
+};
+
+function rrPath(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function curve(an, h, k, xa, xb) {
+  const n = 160;
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const x = xa + (xb - xa) * i / n;
+    const y = clamp(an * (x - h) * (x - h) + k, -40, 60);
+    i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y));
+  }
+}
+function tag(text, px, py, color, align = 'left') {
+  const fs = FS();
+  ctx.font = `600 ${fs}px Barlow, system-ui, sans-serif`;
+  const w = ctx.measureText(text).width + 12, h = fs + 9;
+  let x = align === 'left' ? px : align === 'right' ? px - w : px - w / 2;
+  x = clamp(x, 3, CW - w - 3);
+  const y = clamp(py - h / 2, 3, CH - h - 3);
+  rrPath(x, y, w, h, 4);
+  ctx.fillStyle = 'rgba(248,244,230,.94)'; ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + 6, y + h / 2 + 1);
+}
+
+/* ---------- terrain: flat-topped hills ---------- */
+function terrainY(x) {
+  if (!S.terrain) return 0;
+  let y = 0;
+  for (const m of S.terrain) {
+    const w = 1.5;
+    let v = 0;
+    if (x >= m.a && x <= m.b) v = m.H;
+    else if (x >= m.a - w && x < m.a) v = m.H * (x - (m.a - w)) / w;
+    else if (x > m.b && x <= m.b + w) v = m.H * ((m.b + w) - x) / w;
+    y = Math.max(y, v);
+  }
+  return y;
+}
+function terrainPath() {
+  ctx.beginPath(); ctx.moveTo(-2, CH);
+  for (let px = -2; px <= CW + 2; px += 2) ctx.lineTo(px, Y(terrainY(iX(px))));
+  ctx.lineTo(CW + 2, CH); ctx.closePath();
+}
+function drawField() {
+  ctx.fillStyle = COL.paper; ctx.fillRect(0, 0, CW, CH);
+  const gy = Y(0);
+  ctx.lineWidth = 1;
+  for (let x = WIN.x0; x <= WIN.x1; x++) {
+    ctx.strokeStyle = x % 5 === 0 ? COL.grid5 : COL.grid;
+    line(Math.round(X(x)) + .5, 0, Math.round(X(x)) + .5, gy);
+  }
+  for (let y = 1; y <= WIN.y1; y++) {
+    ctx.strokeStyle = y % 5 === 0 ? COL.grid5 : COL.grid;
+    line(0, Math.round(Y(y)) + .5, CW, Math.round(Y(y)) + .5);
+  }
+  terrainPath(); ctx.fillStyle = COL.ground; ctx.fill();
+  if (S.terrain) {                       // hills keep faint grid lines so heights can be read
+    ctx.save(); terrainPath(); ctx.clip();
+    ctx.fillStyle = COL.hill; ctx.fillRect(0, 0, CW, gy);
+    ctx.strokeStyle = 'rgba(255,244,220,.28)'; ctx.lineWidth = 1;
+    for (let x = WIN.x0; x <= WIN.x1; x++) line(Math.round(X(x)) + .5, 0, Math.round(X(x)) + .5, gy);
+    for (let y = 1; y <= 6; y++) line(0, Math.round(Y(y)) + .5, CW, Math.round(Y(y)) + .5);
+    ctx.restore();
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1;
+  for (let x = WIN.x0; x <= WIN.x1; x++) line(Math.round(X(x)) + .5, gy, Math.round(X(x)) + .5, CH);
+  ctx.strokeStyle = COL.groundEdge; ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let px = -2; px <= CW + 2; px += 2) { const yy = Y(terrainY(iX(px))); px === -2 ? ctx.moveTo(px, yy) : ctx.lineTo(px, yy); }
+  ctx.stroke();
+  ctx.strokeStyle = COL.axis; ctx.lineWidth = 1.6;
+  line(Math.round(X(0)) + .5, 0, Math.round(X(0)) + .5, gy);
+  const fs = FS();
+  ctx.font = `600 ${fs * .9}px Barlow, system-ui, sans-serif`;
+  ctx.textBaseline = 'top'; ctx.textAlign = 'center'; ctx.fillStyle = COL.groundText;
+  for (let x = -10; x <= 10; x += 2) ctx.fillText(int(x), X(x), gy + 5);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = COL.axis;
+  for (let y = 2; y < WIN.y1; y += 2) ctx.fillText(int(y), X(0) + 5, Y(y));
+}
+
+function drawTank(x, y, ang, body, facing = 1, tilt = 0) {
+  const s = TS();
+  ctx.save(); ctx.translate(X(x), Y(y)); ctx.rotate(tilt);
+  if (facing < 0) ctx.scale(-1, 1);
+  ctx.save(); ctx.translate(0, -s * .6); ctx.rotate(ang);
+  ctx.fillStyle = '#2E3326'; ctx.fillRect(0, -s * .055, s * .78, s * .11);
+  ctx.fillRect(s * .7, -s * .08, s * .1, s * .16);
+  ctx.restore();
+  ctx.fillStyle = '#2B2F24'; rrPath(-s * .62, -s * .32, s * 1.24, s * .32, s * .16); ctx.fill();
+  ctx.fillStyle = '#6B715B';
+  for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.arc(i * s * .23, -s * .16, s * .085, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(-s * .58, -s * .3); ctx.lineTo(s * .6, -s * .3); ctx.lineTo(s * .48, -s * .5); ctx.lineTo(-s * .52, -s * .5);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.arc(-s * .02, -s * .5, s * .25, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.12)';
+  ctx.fillRect(-s * .5, -s * .5, s * .98, s * .05);
+  ctx.restore();
+}
+function drawPlayer() {
+  const T = S.tank, y = terrainY(T.x);
+  const sl = (terrainY(T.x + .3) - terrainY(T.x - .3)) / .6;
+  const ppx = CW / (WIN.x1 - WIN.x0), ppy = CH / (WIN.y1 - WIN.y0);
+  drawTank(T.x, y, T.ang, COL.player, T.face, -Math.atan(sl * ppy / ppx));
+  if (T.goal === null) { ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(X(T.x), Y(y), 4, 0, Math.PI * 2); ctx.fill(); }
+}
+function drawFlag(t) {
+  const px = X(t.p), py = Y(t.q), s = TS();
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 2; line(px, py, px, py - s * 1.15);
+  ctx.fillStyle = COL.ink; ctx.beginPath();
+  ctx.moveTo(px, py - s * 1.15); ctx.lineTo(px + t.dir * s * .62, py - s * .93); ctx.lineTo(px, py - s * .71); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = COL.paper; ctx.font = `700 ${Math.max(10, s * .34)}px Barlow, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t.id, px + t.dir * s * .22, py - s * .92);
+}
+function drawDrone(x, y, sel, t) {
+  const s = TS() * .85, px = X(x), py = Y(y);
+  ctx.save(); ctx.translate(px, py);
+  if (sel) {
+    ctx.strokeStyle = COL.ca; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, s * .75, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.strokeStyle = '#2B2F24'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  line(-s * .5, 0, s * .5, 0);
+  line(-s * .5, 0, -s * .5, -s * .18); line(s * .5, 0, s * .5, -s * .18);
+  const spin = reduceMotion ? 1 : Math.abs(Math.cos(t * 28));
+  ctx.fillStyle = 'rgba(43,47,36,.7)';
+  [-1, 1].forEach(sd => { ctx.beginPath(); ctx.ellipse(sd * s * .5, -s * .2, s * .3 * spin + 2, 2.2, 0, 0, Math.PI * 2); ctx.fill(); });
+  ctx.fillStyle = COL.enemy; rrPath(-s * .24, -s * .12, s * .48, s * .26, s * .08); ctx.fill();
+  ctx.fillStyle = (reduceMotion || Math.sin(t * 6) > 0) ? '#FFD34A' : '#6B3A1E';
+  ctx.beginPath(); ctx.arc(0, s * .02, s * .06, 0, Math.PI * 2); ctx.fill();
+  ctx.lineCap = 'butt';
+  ctx.restore();
+}
+function drawReticle(x, y, color, selected, t) {
+  const px = X(x), py = Y(y), r = clamp(CW / 70, 8, 12);
+  ctx.strokeStyle = color; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.stroke();
+  line(px - r - 6, py, px - r + 3, py); line(px + r - 3, py, px + r + 6, py);
+  line(px, py - r - 6, px, py - r + 3); line(px, py + r - 3, px, py + r + 6);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(px, py, 2.6, 0, Math.PI * 2); ctx.fill();
+  if (selected) {
+    const pulse = reduceMotion ? 0 : (Math.sin(t * 5) + 1) * 3;
+    ctx.globalAlpha = .45; ctx.beginPath(); ctx.arc(px, py, r + 8 + pulse, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+}
+
+/* ---------- game state ---------- */
+const S = {
+  mode: 'menu', epoch: 0, time: 0,
+  tank: { x: TANK, face: 1, faceGoal: 1, goal: null, onArrive: null, ang: -.6, angGoal: -.6 },
+  terrain: null,
+  shells: [], parts: [], flashes: [], ghost: null, shake: 0, timers: []
+};
+const R = { h: -4, k: 8, tx: 4, tAlive: true, drag: false, busy: false, hits: 0, shots: 0,
+  show: { axis: true, yint: true, roots: true } };
+const G = { round: 1, targets: [], sel: -1, busy: false, hits: 0, shots: 0, roundShots: 0 };
+const C = { round: 1, targets: [], sel: -1, busy: false, step: 0, corr: 0, roundCorr: 0 };
+const D = { ex: 4, alive: true, busy: false, timer: 1 };
+
+function later(sec, fn) { const ep = S.epoch; S.timers.push({ t: sec, fn, ep }); }
+function tankAngle(an, h, x0) {
+  const m = Math.abs(2 * an * (x0 - h));        // steepness of the arc at the tank
+  const ppx = CW / (WIN.x1 - WIN.x0), ppy = CH / (WIN.y1 - WIN.y0);
+  return clamp(Math.atan2(-m * ppy, ppx), -1.5, -.05);
+}
+const angHK = (h, k) => tankAngle(val(aOf(h, k)), h, TANK);
+/* opts: { targets, onHit(target), onEnd(x, landedOnMap) } */
+function fireShell(h, k, an, x0, dir, opts = {}) {
+  const ep = S.epoch, y0 = an * (x0 - h) ** 2 + k;
+  S.tank.angGoal = tankAngle(an, h, x0);
+  S.shells.push({ an, h, k, x0, dir, x: x0, ep, ...opts });
+  S.flashes.push({ x: x0 + .3 * dir, y: y0 + .5, life: .15, max: .15, r: 16 });
+}
+function boom(x, y, big) {
+  S.flashes.push({ x, y: y + .2, life: big ? .3 : .18, max: big ? .3 : .18, r: big ? 70 : 28 });
+  const n = big ? 46 : 16;
+  for (let i = 0; i < n; i++) {
+    const ang = y > .5 ? Math.random() * Math.PI * 2 : Math.PI * (.08 + .84 * Math.random());
+    const sp = (big ? 4 : 3) + Math.random() * (big ? 8 : 4);
+    const fire = Math.random() < .6;
+    const life = .5 + Math.random() * (big ? .9 : .4);
+    S.parts.push({ x, y: y + .1, vx: Math.cos(ang) * sp * .6, vy: Math.sin(ang) * sp, g: 16, life, max: life,
+      r: (big ? 4 : 3) + Math.random() * 3, color: fire ? pick(['#FFC04A', '#F27B2E', '#E4502A']) : pick(['#6E5634', '#4B4136', '#8A7A62']) });
+  }
+  if (big && !reduceMotion) S.shake = 9;
+}
+
+let msgTimer = 0;
+function stageMsg(text, tone = 'good') {
+  const el = $('stageMsg');
+  el.textContent = text; el.className = 'stage-msg show' + (tone === 'bad' ? ' bad' : '');
+  clearTimeout(msgTimer); msgTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+function setStatus(id, html, tone = '') { const el = $(id); el.innerHTML = html; el.className = 'status' + (tone ? ' ' + tone : ''); }
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+/* ---------- modes ---------- */
+const MODE_NAMES = { menu: 'Graphing quadratics with artillery', recruit: 'Recruit: training range',
+  gunner: 'Gunner: target lock', commander: 'Commander: solve for a' };
+function setMode(m) {
+  S.mode = m; S.epoch++;
+  S.shells = []; S.parts = []; S.flashes = []; S.ghost = null; S.timers = [];
+  S.terrain = null;
+  Object.assign(S.tank, { x: TANK, face: 1, faceGoal: 1, goal: null, onArrive: null });
+  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== m; });
+  $('modeName').textContent = MODE_NAMES[m];
+  $('toMenu').hidden = m === 'menu';
+  $('roundOver').hidden = true;
+  cv.style.touchAction = m === 'recruit' ? 'none' : 'manipulation';
+  cv.style.cursor = m === 'recruit' ? 'crosshair' : 'default';
+  if (m === 'recruit') { R.busy = false; R.tAlive = true; recruitUpdate(); recruitScore(); }
+  if (m === 'gunner') { G.round = 1; G.hits = 0; G.shots = 0; gNewRound(); }
+  if (m === 'commander') { C.round = 1; C.corr = 0; cNewRound(); }
+  if (m === 'menu') { D.busy = false; D.alive = true; D.timer = .8; }
+  try { history.replaceState(null, '', m === 'menu' ? location.pathname : '?mode=' + m); } catch (e) {}
+}
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('toMenu').addEventListener('click', () => setMode('menu'));
+
+/* ---------- RECRUIT ---------- */
+['Axis', 'Yint', 'Roots'].forEach(n => {
+  $('t' + n).addEventListener('change', e => { R.show[n.toLowerCase()] = e.target.checked; });
+});
+
+function recruitUpdate() {
+  const h = R.h, k = R.k, a = aOf(h, k), b = bOf(h, k), c = cOf(h, k), land = landOf(h);
+  const exact = Math.max(a.d, b.d, c.d) <= 36;
+  $('rVertex').innerHTML = vertexHTML(a, h, k);
+  $('rStandard').innerHTML = standardHTML(a, b, c);
+  $('rA').innerHTML =
+    `<div><span class="dim">Plug in (−10, 0):</span>&nbsp; 0&nbsp;=&nbsp;<i class="ca">a</i>(−10&nbsp;−&nbsp;(<span class="ch">${int(h)}</span>))²&nbsp;+&nbsp;<span class="ck">${k}</span></div>
+     <div>${aWorkHTML(h, k)}</div>`;
+  $('rFeat').innerHTML = `
+    <dt>Vertex</dt><dd>(<span class="ch">${int(h)}</span>, <span class="ck">${int(k)}</span>)</dd>
+    <dt>Opens</dt><dd>down, since <i class="ca">a</i> &lt; 0</dd>
+    <dt>Axis</dt><dd><i>x</i> = <span class="ch">${int(h)}</span>
+      ${exact ? `<span class="sub">Check: −<i class="cb">b</i> ÷ 2<i class="ca">a</i> = −(<span class="cb">${fracHTML(b)}</span>) ÷ (2 · <span class="ca">${fracHTML(a)}</span>) = ${int(h)}</span>` : ''}</dd>
+    <dt><i>y</i>-intercept</dt><dd>(0, <span class="cc">${fracOrDec(c)}</span>)</dd>
+    <dt><i>x</i>-intercepts</dt><dd><i>x</i> = −10 (tank) and <i>x</i> = ${int(land)} (landing)
+      <span class="sub">The vertex sits halfway between them.</span></dd>`;
+  $('rFire').disabled = R.busy || !R.tAlive;
+  const where = land > WIN.x1 ? `off the map at <i>x</i> = ${int(land)}` : `at <i>x</i> = ${int(land)}`;
+  setStatus('rStatus', `Shell lands ${where}. Target is at <i>x</i> = ${int(R.tx)}.`);
+}
+function recruitScore() { $('rScore').textContent = `Hits: ${R.hits} of ${plural(R.shots, 'shot')}`; }
+function recruitNewTarget() {
+  let x, tries = 0;
+  do { x = 2 * rint(-3, 5); tries++; } while (tries < 50 && (x === R.tx || x === landOf(R.h)));
+  R.tx = x; R.tAlive = true; recruitUpdate();
+}
+function recruitFire() {
+  if (R.busy || !R.tAlive) return;
+  R.busy = true; R.shots++; recruitScore(); recruitUpdate();
+  const land = landOf(R.h);
+  fireShell(R.h, R.k, val(aOf(R.h, R.k)), TANK, 1, { onEnd: () => {
+    R.busy = false;
+    const miss = land - R.tx;
+    if (Math.abs(miss) <= .6) {
+      R.hits++; R.tAlive = false; boom(R.tx, 0, true);
+      stageMsg(`Direct hit at x = ${int(land)}`);
+      later(1.3, recruitNewTarget);
+    } else {
+      if (land <= WIN.x1) boom(land, 0, false);
+      stageMsg(`${miss < 0 ? 'Short' : 'Long'} by ${int(Math.abs(miss))}`, 'bad');
+    }
+    recruitScore(); recruitUpdate();
+  } });
+}
+$('rFire').addEventListener('click', recruitFire);
+$('rNew').addEventListener('click', () => { if (!R.busy) recruitNewTarget(); });
+
+function moveVertex(e) {
+  const r = cv.getBoundingClientRect();
+  const h = clamp(Math.round(iX(e.clientX - r.left)), -9, 10);
+  const k = clamp(Math.round(iY(e.clientY - r.top)), 1, 11);
+  if (h !== R.h || k !== R.k) { R.h = h; R.k = k; recruitUpdate(); }
+}
+
+function renderRecruit() {
+  const h = R.h, k = R.k, an = val(aOf(h, k)), land = landOf(h);
+  if (R.show.axis) {
+    ctx.setLineDash([6, 6]); ctx.strokeStyle = COL.ch; ctx.lineWidth = 1.8;
+    line(X(h), 0, X(h), Y(0)); ctx.setLineDash([]);
+  }
+  ctx.strokeStyle = 'rgba(35,40,28,.4)'; ctx.lineWidth = 1.6; ctx.setLineDash([3, 5]);
+  curve(an, h, k, WIN.x0, WIN.x1); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.6; curve(an, h, k, TANK, Math.min(land, WIN.x1 + .5)); ctx.stroke();
+
+  if (R.tAlive) {
+    ctx.fillStyle = 'rgba(174,44,114,.22)';
+    ctx.fillRect(X(R.tx - .6), Y(0) - 3, X(R.tx + .6) - X(R.tx - .6), 6);
+    drawTank(R.tx, 0, -.35, COL.enemy, -1);
+  }
+  if (R.show.yint) {
+    const cy = val(cOf(h, k));
+    if (cy > WIN.y0 && cy < WIN.y1) {
+      ctx.fillStyle = COL.cc; ctx.beginPath(); ctx.arc(X(0), Y(cy), 5.5, 0, Math.PI * 2); ctx.fill();
+      tag(`(0, ${num(cy)})`, X(0) + 10, Y(cy) + 16, COL.cc, 'left');
+    }
+  }
+  if (R.show.roots && land <= WIN.x1) {
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(X(land), Y(0), 4.5, 0, Math.PI * 2); ctx.fill();
+  }
+  drawPlayer();
+  const px = X(h), py = Y(k);
+  ctx.fillStyle = '#FBF8EC'; ctx.strokeStyle = COL.ck; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = COL.ck; ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+  tag(`vertex (${int(h)}, ${int(k)})`, px + 14, py - 16, COL.ck, 'left');
+}
+
+/* ---------- drone targets (Gunner + Commander) ---------- */
+// Vertices whose a = −k/(h+10)² reduces to a friendly fraction.
+const FRIENDLY = [];
+for (let d = 2; d <= 16; d++) for (let k = 3; k <= 10; k++) {
+  const a = F(-k, d * d);
+  if (Math.abs(a.n) <= 4 && a.d <= 25 && d !== 10) FRIENDLY.push({ h: d - 10, k });
+}
+const arcY = (t, x) => val(t.a) * (x - t.h) ** 2 + t.k;
+function placeDrone(t) {
+  const land = landOf(t.h), opts = [];
+  for (let x = -6; x <= Math.min(10, land - 1); x++) {
+    if (Math.abs(x - t.h) < 2) continue;
+    const y = arcY(t, x);
+    if (y >= 3 && y <= 10.8) opts.push({ x, y });
+  }
+  return opts.length ? pick(opts) : null;
+}
+function blocks(t, o) { // does arc t pass near drone o before reaching its own drone?
+  for (let x = t.p; t.dir > 0 ? x <= t.tx : x >= t.tx; x += .05 * t.dir) if (Math.hypot(x - o.tx, arcY(t, x) - o.ty) < .9) return true;
+  return false;
+}
+function arcEnd(t) {                     // where the arc meets the ground or leaves the map
+  for (let x = t.p; ; x += .05 * t.dir) {
+    if (x < WIN.x0 - .5 || x > WIN.x1 + .5) return x;
+    if (Math.abs(x - t.p) > .5 && arcY(t, x) <= terrainY(x)) return x;
+  }
+}
+function genTargets(n) {
+  for (let attempt = 0; attempt < 600; attempt++) {
+    const list = []; let tries = 0;
+    while (list.length < n && tries < 300) {
+      tries++;
+      const { h, k } = pick(FRIENDLY);
+      const t = { h, k, a: aOf(h, k), p: TANK, q: 0, dir: 1, alive: true, revealed: false };
+      if (list.some(o => Math.abs(o.h - h) < 2 && Math.abs(o.k - k) < 2)) continue;
+      const dr = placeDrone(t); if (!dr) continue;
+      t.tx = dr.x; t.ty = dr.y;
+      const clash = list.some(o =>
+        Math.hypot(o.tx - t.tx, o.ty - t.ty) < 1.6 ||
+        Math.hypot(o.h - t.tx, o.k - t.ty) < 1.3 || Math.hypot(t.h - o.tx, t.k - o.ty) < 1.3 ||
+        blocks(t, o) || blocks(o, t));
+      if (clash) continue;
+      list.push(t);
+    }
+    if (list.length < n) continue;
+    if (!list.some(t => t.h < 0)) continue;
+    list.sort((p, q) => p.h - q.h || p.k - q.k);
+    list.forEach((t, i) => { t.id = 'ABCDE'[i]; t.end = arcEnd(t); });
+    return list;
+  }
+  return [[-6, 4], [-2, 4], [2, 9]].slice(0, n).map(([h, k], i) => {
+    const t = { h, k, a: aOf(h, k), p: TANK, q: 0, dir: 1, alive: true, revealed: false, id: 'ABC'[i] };
+    const dr = placeDrone(t); t.tx = dr.x; t.ty = dr.y; t.end = arcEnd(t); return t;
+  });
+}
+function hitReticle(M, e) {
+  const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+  let best = -1, bd = Math.max(30, CW / 28);
+  M.targets.forEach((t, i) => {
+    if (!t.alive) return;
+    const d = Math.hypot(X(t.h) - px, Y(t.k) - py);
+    if (d < bd) { bd = d; best = i; }
+  });
+  return best;
+}
+function renderTargets(M) {
+  const sel = M.targets[M.sel];
+  if (sel) {
+    ctx.setLineDash([6, 6]); ctx.strokeStyle = COL.ch; ctx.lineWidth = 1.8;
+    line(X(sel.h), 0, X(sel.h), Y(0)); ctx.setLineDash([]);
+  }
+  M.targets.forEach((t, i) => {
+    if (!t.alive) return;
+    ctx.setLineDash([8, 6]); ctx.lineWidth = i === M.sel ? 2.6 : 2;
+    ctx.strokeStyle = i === M.sel ? COL.ca : 'rgba(35,40,28,.45)';
+    curve(val(t.a), t.h, t.k, t.p, t.end); ctx.stroke(); ctx.setLineDash([]);
+  });
+  if (M === C) M.targets.forEach(t => { if (t.alive) drawFlag(t); });
+  drawPlayer();
+  if (M === C && sel) tag(`tank (${int(sel.p)}, ${int(sel.q)})`, X(sel.p), Y(sel.q) - TS() * 1.7, COL.cc, 'center');
+  M.targets.forEach((t, i) => { if (t.alive) drawDrone(t.tx, t.ty, i === M.sel, S.time); });
+  M.targets.forEach((t, i) => {
+    if (!t.alive) return;
+    const on = i === M.sel;
+    drawReticle(t.h, t.k, on ? COL.ca : COL.ck, on, S.time);
+    const label = t.revealed ? `${t.id}  (${int(t.h)}, ${int(t.k)})` : t.id;
+    tag(label, X(t.h), Y(t.k) - 30, on ? COL.ca : COL.ck, 'center');
+  });
+}
+function roundOverCard(title, text) {
+  $('roTitle').textContent = title; $('roText').textContent = text;
+  $('roundOver').hidden = false; $('nextRound').focus();
+}
+$('nextRound').addEventListener('click', () => {
+  if (S.mode === 'gunner') { G.round++; gNewRound(); }
+  else if (S.mode === 'commander') { C.round++; cNewRound(); }
+});
+const targetCount = round => Math.min(3 + Math.floor((round - 1) / 2), 5);
+function vertexHint(t, h, k) {
+  if (h === t.k && k === t.h) return 'Those are swapped: <i class="ch">h</i> is the x-coordinate and <i class="ck">k</i> is the y-coordinate.';
+  if (h === -t.h && k === t.k) return 'Sign check: enter <i class="ch">h</i> exactly as the x-coordinate reads, sign included. The form already has the minus in (<i>x</i> − <i class="ch">h</i>).';
+  if (h === t.h) return 'The x-coordinate is right. Check <i class="ck">k</i>, the height of the vertex.';
+  if (k === t.k) return 'The height is right. Check <i class="ch">h</i>, the vertex\'s x-coordinate.';
+  return 'Read the crosshair\'s coordinates as (<i class="ch">h</i>, <i class="ck">k</i>).';
+}
+function readNum(id) { const v = $(id).value.trim(); return v === '' ? NaN : Number(v); }
+
+/* ---------- GUNNER ---------- */
+function gNewRound() {
+  G.targets = genTargets(targetCount(G.round)); G.sel = -1; G.busy = false; G.roundShots = 0;
+  S.ghost = null;
+  $('gRound').textContent = 'Round ' + G.round;
+  $('gForm').hidden = true; $('gIntro').hidden = false;
+  setStatus('gStatus', ''); $('roundOver').hidden = true;
+  gScore();
+}
+function gScore() {
+  const left = G.targets.filter(t => t.alive).length;
+  $('gScore').textContent = `${left} left, ${plural(G.hits, 'hit')} in ${plural(G.shots, 'shot')}`;
+}
+function gSelect(i) {
+  const t = G.targets[i];
+  if (!t || !t.alive || G.busy) return;
+  G.sel = i; t.revealed = true;
+  $('gIntro').hidden = true; $('gForm').hidden = false;
+  $('gWhich').innerHTML = `Target ${t.id} vertex <span class="coords">(<span class="ch">${int(t.h)}</span>, <span class="ck">${int(t.k)}</span>)</span>`;
+  $('inH').value = ''; $('inK').value = '';
+  gPreview(); setStatus('gStatus', '');
+  $('inH').focus();
+}
+function gPreview() {
+  const h = readNum('inH'), k = readNum('inK');
+  if (Number.isInteger(h) && Number.isInteger(k) && h > -10 && k > 0) {
+    const a = aOf(h, k);
+    $('gA').innerHTML = a.d > 36 ? '(' + dec(val(a)) + ')' : (coefLead(a) || '1');
+    $('gPreview').innerHTML = flat(`${aWorkHTML(h, k)}, so it reads as ${vertexHTML(a, h, k)}`);
+  } else { $('gA').innerHTML = '<i>a</i>'; $('gPreview').innerHTML = ''; }
+}
+['inH', 'inK'].forEach(id => {
+  $(id).addEventListener('input', gPreview);
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); gFire(); } });
+});
+function gFire() {
+  const t = G.targets[G.sel];
+  if (!t || !t.alive || G.busy) return;
+  const h = readNum('inH'), k = readNum('inK');
+  if (isNaN(h) || isNaN(k)) { setStatus('gStatus', 'Fill in both blanks first.', 'bad'); return; }
+  if (!Number.isInteger(h) || !Number.isInteger(k)) { setStatus('gStatus', 'Use whole numbers. Every vertex here sits on a grid point.', 'bad'); return; }
+  G.shots++; G.roundShots++; gScore();
+  if (h <= -10) {
+    setStatus('gStatus', `With <i class="ch">h</i> = ${int(h)}, the vertex is ${h === -10 ? 'directly above' : 'behind'} the tank, so there's no forward shot. ${vertexHint(t, h, k)}`, 'bad');
+    stageMsg('No firing solution', 'bad'); return;
+  }
+  if (k <= 0) {
+    setStatus('gStatus', `With <i class="ck">k</i> = ${int(k)}, the top of your arc is ${k === 0 ? 'on' : 'below'} the ground, so the shell can't launch. <i class="ck">k</i> is the height of the vertex.`, 'bad');
+    stageMsg('Shell never left the ground', 'bad'); return;
+  }
+  const correct = h === t.h && k === t.k;
+  G.busy = true; $('gFire').disabled = true; setStatus('gStatus', 'Firing…');
+  const done = () => { G.busy = false; $('gFire').disabled = false; gScore(); };
+  fireShell(h, k, val(aOf(h, k)), TANK, 1, {
+    targets: G.targets,
+    onHit: hit => {
+      hit.alive = false; G.hits++; boom(hit.tx, hit.ty, true);
+      stageMsg(`Target ${hit.id} down`);
+      if (hit === t) {
+        const std = standardHTML(t.a, bOf(t.h, t.k), cOf(t.h, t.k));
+        setStatus('gStatus', correct
+          ? flat(`Hit. In standard form that shot is ${std}.`)
+          : 'Hit, though your arc isn\'t the plotted one. More than one parabola from the tank passes through that drone.', 'good');
+        G.sel = -1; $('gForm').hidden = true; $('gIntro').hidden = false;
+      } else {
+        setStatus('gStatus', `Your shot took out target ${hit.id} instead. Your arc peaked at (${int(h)}, ${int(k)}). ${vertexHint(t, h, k)}`, 'bad');
+      }
+      done();
+      if (G.targets.every(q => !q.alive)) later(1.4, () => {
+        const n = G.targets.length;
+        roundOverCard(`Round ${G.round} cleared`, `${n} targets in ${plural(G.roundShots, 'shot')}, ${Math.round(100 * n / Math.max(1, G.roundShots))}% accuracy.`);
+      });
+    },
+    onEnd: (x, landed) => {
+      if (landed) boom(x, 0, false);
+      stageMsg('Miss', 'bad');
+      setStatus('gStatus', `Your arc peaked at (${int(h)}, ${int(k)}) and missed the drone. ${vertexHint(t, h, k)}`, 'bad');
+      done();
+    }
+  });
+}
+$('gFire').addEventListener('click', gFire);
+
+/* ---------- COMMANDER ---------- */
+// (distance from tank to vertex, drop from vertex to tank) pairs that give friendly a = −m / d²
+const C_FRIENDLY = [];
+for (let d = 2; d <= 8; d++) for (let m = 1; m <= 10; m++) {
+  const a = F(-m, d * d);
+  if (Math.abs(a.n) <= 4 && a.d <= 25) C_FRIENDLY.push({ d, m });
+}
+function genTerrain() {
+  for (let tries = 0; tries < 200; tries++) {
+    const n = rint(1, 2), list = [];
+    for (let i = 0; i < n; i++) {
+      const w = rint(2, 4), a = rint(-7, 8 - w), m = { a, b: a + w, H: rint(2, 4) };
+      if (list.some(o => m.a < o.b + 4 && o.a < m.b + 4)) continue;
+      list.push(m);
+    }
+    if (list.length) return list;
+  }
+  return [{ a: -2, b: 1, H: 3 }];
+}
+function firingSpots() {
+  const spots = [];
+  for (let x = -10; x <= 10; x++) {
+    if (terrainY(x - .8) === 0 && terrainY(x) === 0 && terrainY(x + .8) === 0) spots.push({ p: x, q: 0 });
+    else if (S.terrain.some(m => x - .6 >= m.a && x + .6 <= m.b)) spots.push({ p: x, q: terrainY(x) });
+  }
+  return spots;
+}
+function placeDroneC(t) {
+  const end = arcEnd(t), opts = [];
+  for (let x = t.p + 2 * t.dir; t.dir > 0 ? x < end - .5 : x > end + .5; x += t.dir) {
+    if (x < -10.5 || x > 10.5) break;
+    if (Math.abs(x - t.h) < 2) continue;
+    const y = arcY(t, x);
+    if (y < Math.max(3, terrainY(x) + 2) || y > 10.8) continue;
+    opts.push({ x, y });
+  }
+  return opts.length ? pick(opts) : null;
+}
+function genCommander(n) {
+  const spots = firingSpots(), hills = spots.filter(sp => sp.q > 0);
+  if (!hills.length) return null;
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const list = []; let tries = 0;
+    while (list.length < n && tries < 300) {
+      tries++;
+      const sp = Math.random() < .6 ? pick(hills) : pick(spots);
+      if (list.some(o => o.p !== sp.p && Math.abs(o.p - sp.p) < 2)) continue;
+      const { d, m } = pick(C_FRIENDLY);
+      const dir = sp.p < -3 ? 1 : sp.p > 3 ? -1 : pick([1, -1]);
+      if (list.some(o => o.p === sp.p && (o.q === 0 || o.dir === dir))) continue;
+      const h = sp.p + dir * d, k = sp.q + m;
+      if (h < -9 || h > 9 || h === 0 || k > 11 || k < terrainY(h) + 2) continue;
+      if (list.some(o => Math.abs(o.h - h) < 2 && Math.abs(o.k - k) < 2)) continue;
+      const t = { h, k, a: F(-m, d * d), p: sp.p, q: sp.q, dir, alive: true, revealed: false };
+      const dr = placeDroneC(t); if (!dr) continue;
+      t.tx = dr.x; t.ty = dr.y;
+      const clash = list.some(o =>
+        Math.hypot(o.tx - t.tx, o.ty - t.ty) < 1.6 ||
+        Math.hypot(o.h - t.tx, o.k - t.ty) < 1.3 || Math.hypot(t.h - o.tx, t.k - o.ty) < 1.3 ||
+        blocks(t, o) || blocks(o, t));
+      if (clash) continue;
+      list.push(t);
+    }
+    if (list.length < n || list.filter(t => t.q > 0).length < (attempt < 200 ? 2 : 1)) continue;
+    list.sort((p, q) => p.h - q.h || p.k - q.k);
+    list.forEach((t, i) => { t.id = 'ABCDE'[i]; t.end = arcEnd(t); });
+    return list;
+  }
+  return null;
+}
+function cNewRound() {
+  let list = null;
+  for (let i = 0; i < 40 && !list; i++) { S.terrain = genTerrain(); list = genCommander(targetCount(C.round)); }
+  for (let i = 0; i < 40 && !list; i++) { S.terrain = genTerrain(); list = genCommander(3); }
+  C.targets = list || []; C.sel = -1; C.busy = false; C.roundCorr = 0;
+  S.ghost = null;
+  const T = S.tank; T.goal = null; T.onArrive = null;
+  if (terrainY(T.x) > 0) T.x = TANK;
+  $('cRound').textContent = 'Round ' + C.round;
+  $('cForm').hidden = true; $('cIntro').hidden = false;
+  setStatus('cStatus', ''); $('roundOver').hidden = true;
+  cScore();
+}
+function cScore() {
+  const left = C.targets.filter(t => t.alive).length;
+  $('cScore').textContent = `${left} left, ${plural(C.corr, 'correction')}`;
+}
+const blank = (id, cls, ph, label) =>
+  `<input id="${id}" class="blank ${cls}" type="number" step="1" placeholder="${ph}" aria-label="${label}">`;
+function cSelect(i) {
+  const t = C.targets[i];
+  if (!t || !t.alive || C.busy) return;
+  C.sel = i; C.step = 0; t.revealed = true;
+  const T = S.tank; T.goal = t.p; T.faceGoal = t.dir; T.onArrive = null;
+  const P = int(t.p), Q = int(t.q), H = int(t.h), K = t.k, inside = t.p - t.h, sq = inside * inside;
+  $('cIntro').hidden = true; $('cForm').hidden = false;
+  $('cWhich').innerHTML = `Target ${t.id} vertex <span class="coords">(<span class="ch">${H}</span>, <span class="ck">${K}</span>)</span><br>Tank fires from <span class="coords cc">(${P}, ${Q})</span>`;
+  const steps = [
+    ['Write the vertex form from the crosshair.',
+      `<i>y</i>&nbsp;=&nbsp;<i class="ca">a</i>(<i>x</i>&nbsp;−${blank('c1h', 'bh', 'h', 'h')})²&nbsp;+${blank('c1k', 'bk', 'k', 'k')}`],
+    [`Plug in the tank's position (${P}, ${Q}). Simplify inside the parentheses.`,
+      `<span class="given"><span class="cc">${Q}</span>&nbsp;=&nbsp;<i class="ca">a</i>(<span class="cc">${P}</span>&nbsp;−&nbsp;(<span class="ch">${H}</span>))²&nbsp;+&nbsp;<span class="ck">${K}</span></span><br>${Q}&nbsp;=&nbsp;<i class="ca">a</i>(${blank('c2', 'bn', '?', 'value inside the parentheses')})²&nbsp;+&nbsp;${K}`],
+    ['Square that number.',
+      `${Q}&nbsp;=&nbsp;${blank('c3', 'bn', '?', 'the square')}<i class="ca">a</i>&nbsp;+&nbsp;${K}`],
+    [`Subtract ${K} from both sides.`,
+      `${blank('c4', 'bn', '?', 'left side')}&nbsp;=&nbsp;${sq}<i class="ca">a</i>`],
+    [`Divide both sides by ${sq}.`,
+      `<i class="ca">a</i>&nbsp;=&nbsp;<span class="fin">${blank('c5n', 'bn', '?', 'numerator')}<span class="bar"></span>${blank('c5d', 'bn', '?', 'denominator')}</span>`]
+  ];
+  $('cSteps').innerHTML = steps.map(([p, e], j) =>
+    `<li id="cs${j}" ${j ? 'hidden' : ''} class="${j ? '' : 'cur'}"><div class="sp">${p}</div><div class="se">${e}</div></li>`).join('');
+  $('cSteps').querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); cCheck(); }
+  }));
+  $('cFinal').hidden = true; $('cFire').hidden = true; $('cCheck').hidden = false;
+  setStatus('cStatus', '');
+  $('c1h').focus();
+}
+const STEP_IDS = [['c1h', 'c1k'], ['c2'], ['c3'], ['c4'], ['c5n', 'c5d']];
+function cCheck() {
+  const t = C.targets[C.sel];
+  if (!t || !t.alive || C.busy || C.step > 4) return;
+  const ids = STEP_IDS[C.step], vals = ids.map(readNum);
+  if (vals.some(isNaN)) { setStatus('cStatus', 'Fill in the blank' + (ids.length > 1 ? 's' : '') + ' first.', 'bad'); return; }
+  if (!vals.every(Number.isInteger)) { setStatus('cStatus', 'Use whole numbers here.', 'bad'); return; }
+  const P = int(t.p), Q = int(t.q), H = int(t.h), K = t.k;
+  const inside = t.p - t.h, sq = inside * inside, left = t.q - t.k;
+  let ok = false, hint = '';
+  switch (C.step) {
+    case 0: {
+      const [h, kk] = vals; ok = h === t.h && kk === t.k;
+      if (!ok) hint = vertexHint(t, h, kk);
+      break;
+    }
+    case 1: {
+      const [v] = vals; ok = v === inside;
+      if (!ok) {
+        if (v === -inside) hint = `That's the opposite sign. Work out ${P} − (${H}) in that order: the tank's x minus the vertex's x.`;
+        else if (t.h < 0) hint = `Subtracting a negative is the same as adding. Rewrite ${P} − (${H}) as an addition.`;
+        else hint = `Start at ${P} and subtract ${H}.`;
+      }
+      break;
+    }
+    case 2: {
+      const [v] = vals; ok = v === sq;
+      if (!ok) {
+        if (v === -sq) hint = `A negative times a negative is positive, so (${int(inside)})² is positive.`;
+        else if (v === 2 * inside || v === -2 * inside) hint = `Squaring means multiplying the number by itself, not by 2: (${int(inside)})(${int(inside)}).`;
+        else hint = `Squaring means multiplying the number by itself: (${int(inside)})(${int(inside)}).`;
+      }
+      break;
+    }
+    case 3: {
+      const [v] = vals; ok = v === left;
+      if (!ok) {
+        if (v === -left) hint = `Check the sign. ${Q} − ${K} is negative, because the vertex is higher than the tank.`;
+        else if (v === t.q + t.k) hint = `Subtract ${K} instead of adding it.`;
+        else if (v === -t.k && t.q !== 0) hint = `The left side starts at ${Q}, not 0. It becomes ${Q} − ${K}.`;
+        else hint = `Take ${K} away from both sides. The right side becomes just ${sq}<i class="ca">a</i>, and the left side becomes ${Q} − ${K}.`;
+      }
+      break;
+    }
+    case 4: {
+      const [n, d] = vals;
+      if (d === 0) { hint = 'The denominator can\'t be 0.'; break; }
+      ok = n * sq === left * d;
+      if (!ok) {
+        if (n * sq === -left * d) hint = `Check the sign. The left side is ${int(left)}, so <i class="ca">a</i> is negative.`;
+        else if (n * left === sq * d) hint = `That's flipped. Dividing by ${sq} puts ${sq} in the denominator.`;
+        else hint = `<i class="ca">a</i> equals the left side, ${int(left)}, divided by ${sq}.`;
+      }
+      break;
+    }
+  }
+  ids.forEach(id => { $(id).classList.remove('bad', 'ok'); });
+  if (!ok) {
+    C.corr++; C.roundCorr++; cScore();
+    ids.forEach(id => $(id).classList.add('bad'));
+    setStatus('cStatus', hint, 'bad');
+    $(ids[0]).focus();
+    return;
+  }
+  ids.forEach(id => { const el = $(id); el.classList.add('ok'); el.disabled = true; });
+  const li = $('cs' + C.step); li.classList.remove('cur'); li.classList.add('done');
+  C.step++;
+  if (C.step <= 4) {
+    const nx = $('cs' + C.step); nx.hidden = false; nx.classList.add('cur');
+    setStatus('cStatus', 'Correct.', 'good');
+    $(STEP_IDS[C.step][0]).focus();
+  } else {
+    const [n, d] = vals, a = t.a, reduced = F(n, d);
+    const note = (reduced.n !== n || reduced.d !== d) ? `<div>${int(n)}/${d} simplifies to ${fracHTML(a)}</div>` : '';
+    $('cFinal').innerHTML = `${note}<div><i class="ca">a</i>&nbsp;=&nbsp;<span class="ca">${fracHTML(a)}</span>, so&nbsp; ${vertexHTML(a, t.h, t.k)}</div>`;
+    $('cFinal').hidden = false; $('cCheck').hidden = true; $('cFire').hidden = false;
+    setStatus('cStatus', 'Firing solution ready.', 'good');
+    $('cFire').focus();
+  }
+}
+$('cCheck').addEventListener('click', cCheck);
+function cFire() {
+  const t = C.targets[C.sel];
+  if (!t || !t.alive || C.busy || C.step < 5) return;
+  C.busy = true; $('cFire').disabled = true;
+  const ep = S.epoch;
+  const launch = () => {
+    if (ep !== S.epoch) return;
+    fireShell(t.h, t.k, val(t.a), t.p, t.dir, {
+      targets: C.targets,
+      onHit: hit => {
+        hit.alive = false; boom(hit.tx, hit.ty, true);
+        stageMsg(`Target ${hit.id} down`);
+        C.busy = false; $('cFire').disabled = false;
+        const std = standardHTML(t.a, bFrom(t.a, t.h), cFrom(t.a, t.h, t.k));
+        setStatus('cStatus', flat(`Hit. In standard form that shot is ${std}.`), 'good');
+        C.sel = -1; $('cForm').hidden = true; $('cIntro').hidden = false;
+        cScore();
+        if (C.targets.every(q => !q.alive)) later(1.4, () =>
+          roundOverCard(`Round ${C.round} cleared`, `${C.targets.length} targets solved with ${plural(C.roundCorr, 'correction')}.`));
+      },
+      onEnd: () => { C.busy = false; $('cFire').disabled = false; }
+    });
+  };
+  const T = S.tank;
+  if (T.goal !== null) T.onArrive = launch; else launch();
+}
+$('cFire').addEventListener('click', cFire);
+
+/* ---------- MENU demo ---------- */
+function demoShot() {
+  const h = (D.ex - 10) / 2, k = rint(3, 11), ep = S.epoch;
+  D.busy = true;
+  S.tank.angGoal = angHK(h, k);
+  later(.4, () => fireShell(h, k, val(aOf(h, k)), TANK, 1, { onEnd: () => {
+    if (ep !== S.epoch) return;
+    D.alive = false; boom(D.ex, 0, true);
+    later(1.5, () => { D.ex = 2 * rint(-3, 5); D.alive = true; D.busy = false; D.timer = .9; });
+  } }));
+}
+function renderMenu() {
+  drawTank(D.ex, 0, D.alive ? -.35 : .3, D.alive ? COL.enemy : COL.wreck, -1);
+  drawPlayer();
+}
+
+/* ---------- input ---------- */
+const MODES = { gunner: [G, gSelect], commander: [C, cSelect] };
+cv.addEventListener('pointerdown', e => {
+  cv.focus({ preventScroll: true });
+  if (S.mode === 'recruit') { R.drag = true; cv.setPointerCapture(e.pointerId); moveVertex(e); }
+  else if (MODES[S.mode]) { const [M, sel] = MODES[S.mode]; const i = hitReticle(M, e); if (i >= 0) sel(i); }
+});
+cv.addEventListener('pointermove', e => {
+  if (S.mode === 'recruit' && R.drag) moveVertex(e);
+  else if (MODES[S.mode]) cv.style.cursor = hitReticle(MODES[S.mode][0], e) >= 0 ? 'pointer' : 'default';
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => cv.addEventListener(ev, () => { R.drag = false; }));
+cv.addEventListener('keydown', e => {
+  if (S.mode === 'recruit') {
+    const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    if (mv) { e.preventDefault(); R.h = clamp(R.h + mv[0], -9, 10); R.k = clamp(R.k + mv[1], 1, 11); recruitUpdate(); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); recruitFire(); }
+  } else if (MODES[S.mode]) {
+    const i = '12345'.indexOf(e.key);
+    if (i >= 0) { e.preventDefault(); MODES[S.mode][1](i); }
+  }
+});
+
+/* ---------- loop ---------- */
+function update(dt) {
+  S.time += dt;
+  const T = S.tank;
+  if (T.goal !== null) {
+    const dx = T.goal - T.x, step = 7 * dt;
+    if (Math.abs(dx) <= step) { T.x = T.goal; T.goal = null; T.face = T.faceGoal; const f = T.onArrive; T.onArrive = null; if (f) f(); }
+    else { T.x += Math.sign(dx) * step; T.face = Math.sign(dx); T.angGoal = -.25; }
+  }
+  if (S.mode === 'recruit' && !R.busy) T.angGoal = angHK(R.h, R.k);
+  if (MODES[S.mode] && T.goal === null) {
+    const M = MODES[S.mode][0], t = M.targets[M.sel];
+    if (t && !M.busy) T.angGoal = tankAngle(val(t.a), t.h, t.p);
+  }
+  T.ang += (T.angGoal - T.ang) * Math.min(1, dt * 10);
+
+  const finished = [];
+  S.shells = S.shells.filter(s => {
+    if (s.ep !== S.epoch) return false;
+    const nx = s.x + s.dir * 11 * dt;
+    for (let x = s.x; s.dir > 0 ? x <= nx : x >= nx; x += .04 * s.dir) {
+      const y = s.an * (x - s.h) ** 2 + s.k;
+      if (s.targets) for (const t of s.targets) {
+        if (t.alive && Math.hypot(x - t.tx, y - t.ty) < .45) { s.x = x; finished.push([s, t]); return false; }
+      }
+      if (Math.abs(x - s.x0) > .5 && y <= terrainY(x)) { s.x = x; finished.push([s, null, true]); return false; }
+      if (x < WIN.x0 - .5 || x > WIN.x1 + .5 || y < WIN.y0 - 2) { s.x = x; finished.push([s, null, false]); return false; }
+    }
+    s.x = nx;
+    return true;
+  });
+  finished.forEach(([s, hit, landed]) => {
+    S.ghost = { an: s.an, h: s.h, k: s.k, x0: s.x0, x1: s.x };
+    if (hit) s.onHit && s.onHit(hit);
+    else s.onEnd && s.onEnd(s.x, landed);
+  });
+
+  S.parts = S.parts.filter(p => {
+    p.life -= dt; p.vy -= p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    { const g = terrainY(p.x); if (p.y < g) { p.y = g; p.vy *= -.3; p.vx *= .7; } }
+    return p.life > 0;
+  });
+  S.flashes = S.flashes.filter(f => (f.life -= dt) > 0);
+  S.shake = Math.max(0, S.shake - dt * 30);
+  S.timers = S.timers.filter(tm => {
+    if (tm.ep !== S.epoch) return false;
+    tm.t -= dt; if (tm.t <= 0) { tm.fn(); return false; }
+    return true;
+  });
+  if (S.mode === 'menu' && !D.busy) { D.timer -= dt; if (D.timer <= 0) demoShot(); }
+}
+
+function render() {
+  ctx.save();
+  if (S.shake > 0) ctx.translate((Math.random() - .5) * S.shake, (Math.random() - .5) * S.shake);
+  drawField();
+  if (S.ghost) {
+    const g = S.ghost;
+    ctx.strokeStyle = 'rgba(181,100,10,.45)'; ctx.lineWidth = 2; ctx.setLineDash([2, 5]);
+    curve(g.an, g.h, g.k, g.x0, g.x1); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (S.mode === 'recruit') renderRecruit();
+  else if (MODES[S.mode]) renderTargets(MODES[S.mode][0]);
+  else renderMenu();
+
+  S.shells.forEach(s => {
+    ctx.strokeStyle = COL.ca; ctx.lineWidth = 3;
+    curve(s.an, s.h, s.k, s.x0, s.x); ctx.stroke();
+    const y = s.an * (s.x - s.h) ** 2 + s.k;
+    ctx.fillStyle = COL.ink; ctx.beginPath(); ctx.arc(X(s.x), Y(y), clamp(CW / 140, 4, 6), 0, Math.PI * 2); ctx.fill();
+  });
+  S.parts.forEach(p => {
+    const a = p.life / p.max;
+    ctx.globalAlpha = a; ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), p.r * (.4 + .6 * a), 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  S.flashes.forEach(f => {
+    const a = f.life / f.max;
+    const grd = ctx.createRadialGradient(X(f.x), Y(f.y), 0, X(f.x), Y(f.y), f.r);
+    grd.addColorStop(0, `rgba(255,236,170,${.9 * a})`); grd.addColorStop(1, 'rgba(255,160,60,0)');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(X(f.x), Y(f.y), f.r, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.restore();
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  update(dt); render();
+  requestAnimationFrame(frame);
+}
+
+const startMode = new URLSearchParams(location.search).get('mode');
+setMode(['recruit', 'gunner', 'commander'].includes(startMode) ? startMode : 'menu');
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

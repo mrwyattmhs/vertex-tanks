@@ -238,6 +238,15 @@
   }
   .final div{white-space:nowrap}
   .lock .coords.cc{color:var(--cc)}
+  .pro-steps .pline{font-size:17px;margin:4px 0 8px;line-height:1.7}
+  .pro-steps .pnote{font-size:14px;color:var(--bone-dim)}
+  .pro-steps .coords{background:var(--olive-deep);border-radius:6px;padding:2px 8px}
+  .pro-steps .coords.cc{color:var(--cc)}
+  .good-txt{color:var(--ca);font-weight:700}
+  .steps{grid-template-columns:minmax(0,1fr)}
+  .steps li{min-width:0}
+  .pro-steps .eq.fill{margin-bottom:10px;font-size:19px;padding:8px 10px}
+  .pro-steps .blank{width:2.6em}
   .c-actions{display:flex;gap:10px;align-items:center;margin-bottom:6px}
 </style>
 </head>
@@ -284,6 +293,11 @@
           <span class="mc-name">Commander</span>
           <span class="mc-sub">Solve for a</span>
           <span class="mc-desc">The tank moves between firing spots, some up on hills. Plug its position into the vertex form and solve for a step by step.</span>
+        </button>
+        <button class="mode-card" data-mode="pro">
+          <span class="mc-name">Pro</span>
+          <span class="mc-sub">Free fire</span>
+          <span class="mc-desc">Park your tank anywhere, hunt for a vertex that hits, then write the whole equation with no steps.</span>
         </button>
       </div>
     </section>
@@ -363,6 +377,40 @@
       <p class="status" id="cStatus" aria-live="polite"></p>
 
       <p class="key">Every arc passes through the tank. Substituting the tank's position for <i>x</i> and <i>y</i> in the vertex form leaves one unknown: <i class="ca">a</i>. On a hill, <i>y</i> isn't 0, so watch the left side.</p>
+    </section>
+    <!-- PRO -->
+    <section data-pane="pro" hidden>
+      <div class="g-head">
+        <span class="round" id="pRound">Round 1</span>
+        <span class="gscore" id="pScore"></span>
+      </div>
+      <ol class="steps pro-steps">
+        <li id="pS1">
+          <div class="sp">Position your tank</div>
+          <div class="pline" id="pPos"></div>
+          <div class="c-actions"><button class="btn ghost" id="pMove">Aim from here</button></div>
+          <div class="pnote">Click the ground to drive there. The tank parks on whole-number spots, on flat ground or hilltops.</div>
+        </li>
+        <li id="pS2" hidden>
+          <div class="sp">Find a vertex that hits</div>
+          <div class="pline" id="pAim"></div>
+          <div class="c-actions"><button class="btn ghost" id="pLock" hidden disabled>Lock this shot</button></div>
+        </li>
+        <li id="pS3" hidden>
+          <div class="sp">Write the equation</div>
+          <div class="eq fill">
+            <i>y</i>&nbsp;=&nbsp;<span class="fin"><input id="pN" class="blank bn" type="number" step="1" placeholder="?" aria-label="numerator of a"><span class="bar"></span><input id="pD" class="blank bn" type="number" step="1" placeholder="1" aria-label="denominator of a"></span>(<i>x</i>&nbsp;−<input id="pH" class="blank bh" type="number" step="1" placeholder="h" aria-label="h">)²&nbsp;+<input id="pK" class="blank bk" type="number" step="1" placeholder="k" aria-label="k">
+          </div>
+          <div class="final" id="pFinal" hidden></div>
+          <div class="c-actions">
+            <button class="btn ghost" id="pCheck">Check</button>
+            <button class="btn fire" id="pFire" hidden>Fire</button>
+            <button class="btn ghost" id="pBack">Change shot</button>
+          </div>
+        </li>
+      </ol>
+      <p class="status" id="pStatus" aria-live="polite"></p>
+      <p class="key">No steps here. Substitute the tank's position into <i>y</i> = <i class="ca">a</i>(<i>x</i> − <i class="ch">h</i>)² + <i class="ck">k</i> on paper and solve for <i class="ca">a</i>. Write <i class="ca">a</i> as a fraction, and leave the bottom blank if it's a whole number.</p>
     </section>
   </aside>
 </main>
@@ -673,7 +721,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 /* ---------- modes ---------- */
 const MODE_NAMES = { menu: 'Graphing quadratics with artillery', recruit: 'Recruit: training range',
-  gunner: 'Gunner: target lock', commander: 'Commander: solve for a' };
+  gunner: 'Gunner: target lock', commander: 'Commander: solve for a', pro: 'Pro: free fire' };
 function setMode(m) {
   S.mode = m; S.epoch++;
   S.shells = []; S.parts = []; S.flashes = []; S.ghost = null; S.timers = [];
@@ -683,11 +731,12 @@ function setMode(m) {
   $('modeName').textContent = MODE_NAMES[m];
   $('toMenu').hidden = m === 'menu';
   $('roundOver').hidden = true;
-  cv.style.touchAction = m === 'recruit' ? 'none' : 'manipulation';
-  cv.style.cursor = m === 'recruit' ? 'crosshair' : 'default';
+  cv.style.touchAction = (m === 'recruit' || m === 'pro') ? 'none' : 'manipulation';
+  cv.style.cursor = (m === 'recruit' || m === 'pro') ? 'crosshair' : 'default';
   if (m === 'recruit') { R.busy = false; R.tAlive = true; recruitUpdate(); recruitScore(); }
   if (m === 'gunner') { G.round = 1; G.hits = 0; G.shots = 0; gNewRound(); }
   if (m === 'commander') { C.round = 1; C.corr = 0; cNewRound(); }
+  if (m === 'pro') { P.round = 1; P.corr = 0; pNewRound(); }
   if (m === 'menu') { D.busy = false; D.alive = true; D.timer = .8; }
   try { history.replaceState(null, '', m === 'menu' ? location.pathname : '?mode=' + m); } catch (e) {}
 }
@@ -882,6 +931,7 @@ function roundOverCard(title, text) {
 $('nextRound').addEventListener('click', () => {
   if (S.mode === 'gunner') { G.round++; gNewRound(); }
   else if (S.mode === 'commander') { C.round++; cNewRound(); }
+  else if (S.mode === 'pro') { P.round++; pNewRound(); }
 });
 const targetCount = round => Math.min(3 + Math.floor((round - 1) / 2), 5);
 function vertexHint(t, h, k) {
@@ -1203,6 +1253,218 @@ function cFire() {
 }
 $('cFire').addEventListener('click', cFire);
 
+/* ---------- PRO: free fire ---------- */
+const P = { round: 1, targets: [], spots: [], phase: 'move', pos: null, vh: null, vk: null, prev: null,
+  busy: false, drag: false, corr: 0, roundCorr: 0 };
+const spotFree = sp => !P.targets.some(t => t.alive && Math.abs(t.ex - sp.p) < 1.5);
+function trace(an, h, k, x0, dir, targets) {
+  for (let x = x0; ; x += .04 * dir) {
+    const y = an * (x - h) ** 2 + k;
+    if (targets) for (const t of targets) if (t.alive && Math.hypot(x - t.tx, y - t.ty) < (t.r || .45)) return { x, hit: t };
+    if (Math.abs(x - x0) > .5 && y <= terrainY(x)) return { x, landed: true };
+    if (x < WIN.x0 - .5 || x > WIN.x1 + .5 || y < WIN.y0 - 2) return { x, landed: false };
+  }
+}
+function pNewRound() {
+  const n = P.round < 3 ? 3 : 4;
+  let ok = false;
+  for (let tries = 0; tries < 80 && !ok; tries++) {
+    S.terrain = genTerrain();
+    const spots = firingSpots(), start = spots[0];
+    if (!start || start.p > -8) continue;
+    const pool = spots.filter(sp => sp.p >= start.p + 4);
+    for (let i = 0; i < 60 && !ok; i++) {
+      const picks = [];
+      for (let j = 0; j < 100 && picks.length < n; j++) {
+        const sp = pick(pool);
+        if (!picks.some(o => Math.abs(o.p - sp.p) < 3)) picks.push(sp);
+      }
+      if (picks.length < n || !picks.some(sp => sp.q > 0)) continue;
+      P.targets = picks.sort((a, b) => a.p - b.p).map((sp, i) =>
+        ({ id: 'ABCD'[i], ex: sp.p, ey: sp.q, tx: sp.p, ty: sp.q + .35, r: .65, alive: true }));
+      P.spots = spots; P.pos = start; ok = true;
+    }
+  }
+  if (!ok) {
+    S.terrain = [{ a: -2, b: 1, H: 3 }]; P.spots = firingSpots(); P.pos = P.spots[0];
+    P.targets = [[-1, 3], [5, 0], [9, 0]].map(([x, y], i) => ({ id: 'ABC'[i], ex: x, ey: y, tx: x, ty: y + .35, r: .65, alive: true }));
+  }
+  Object.assign(S.tank, { x: P.pos.p, goal: null, onArrive: null, face: 1, faceGoal: 1 });
+  P.phase = 'move'; P.vh = P.vk = null; P.prev = null; P.busy = false; P.roundCorr = 0;
+  S.ghost = null;
+  $('pRound').textContent = 'Round ' + P.round;
+  $('roundOver').hidden = true;
+  setStatus('pStatus', '');
+  pUI();
+}
+function pScore() {
+  const left = P.targets.filter(t => t.alive).length;
+  $('pScore').textContent = `${left} left, ${plural(P.corr, 'correction')}`;
+}
+function pUI() {
+  const { p, q } = P.pos, aiming = P.phase !== 'move';
+  $('pPos').innerHTML = `Tank at <span class="coords cc">(${int(p)}, ${int(q)})</span>`;
+  $('pMove').textContent = aiming ? 'Move tank' : 'Aim from here';
+  $('pMove').disabled = P.busy;
+  $('pS1').classList.toggle('cur', P.phase === 'move'); $('pS1').classList.toggle('done', aiming);
+  $('pS2').hidden = !aiming;
+  $('pS2').classList.toggle('cur', P.phase === 'aim'); $('pS2').classList.toggle('done', P.phase === 'solve');
+  $('pS3').hidden = P.phase !== 'solve';
+  $('pS3').classList.toggle('cur', P.phase === 'solve');
+  $('pLock').hidden = P.phase !== 'aim';
+  $('pLock').disabled = !(P.prev && P.prev.hit);
+  let aim = 'Click anywhere above the tank to set the vertex. Drag to explore.';
+  if (P.vh !== null) {
+    const pr = P.prev;
+    const res = pr.hit ? `<span class="good-txt">hits target ${pr.hit.id}</span>`
+      : pr.landed ? `misses, landing near <i>x</i> = ${num(pr.x)}` : 'misses and flies off the map';
+    aim = `Vertex <span class="coords">(<span class="ch">${int(P.vh)}</span>, <span class="ck">${int(P.vk)}</span>)</span> ${res}.`;
+  }
+  $('pAim').innerHTML = aim;
+  pScore();
+}
+function pSetPos(sp) {
+  if (!sp || P.busy) return;
+  P.pos = sp; P.vh = P.vk = null; P.prev = null;
+  const T = S.tank; T.goal = sp.p; T.faceGoal = 1; T.onArrive = null;
+  pUI();
+}
+function pNearestSpot(x) {
+  let best = null, bd = Infinity;
+  for (const sp of P.spots) if (spotFree(sp) && Math.abs(sp.p - x) < bd) { bd = Math.abs(sp.p - x); best = sp; }
+  return best;
+}
+function pSetVertex(h, k) {
+  const { p, q } = P.pos;
+  h = clamp(h, -10, 10); k = clamp(k, 1, 11);
+  if (h === P.vh && k === P.vk) return;
+  if (h === p) { setStatus('pStatus', 'The vertex can\'t be straight above the tank. Move it left or right.', 'bad'); return; }
+  if (k <= q) { setStatus('pStatus', `The vertex has to be higher than the tank, above <i>y</i> = ${int(q)}.`, 'bad'); return; }
+  setStatus('pStatus', '');
+  P.vh = h; P.vk = k;
+  const an = (q - k) / ((p - h) ** 2), dir = Math.sign(h - p);
+  P.prev = { an, dir, ...trace(an, h, k, p, dir, P.targets) };
+  if (S.tank.goal === null) S.tank.face = dir;
+  pUI();
+}
+function pVertexFromPointer(e) {
+  const r = cv.getBoundingClientRect();
+  pSetVertex(Math.round(iX(e.clientX - r.left)), Math.round(iY(e.clientY - r.top)));
+}
+$('pMove').addEventListener('click', () => {
+  if (P.busy) return;
+  if (P.phase === 'move') { P.phase = 'aim'; setStatus('pStatus', ''); }
+  else { P.phase = 'move'; P.vh = P.vk = null; P.prev = null; setStatus('pStatus', ''); }
+  pUI();
+});
+$('pLock').addEventListener('click', () => {
+  if (!(P.prev && P.prev.hit) || P.busy) return;
+  P.phase = 'solve';
+  ['pN', 'pD', 'pH', 'pK'].forEach(id => { const el = $(id); el.value = ''; el.disabled = false; el.classList.remove('ok', 'bad'); });
+  $('pFinal').hidden = true; $('pFire').hidden = true; $('pCheck').hidden = false;
+  setStatus('pStatus', `Locked on target ${P.prev.hit.id}. Solve for <i class="ca">a</i> on your own and write the full equation.`);
+  pUI(); $('pN').focus();
+});
+$('pBack').addEventListener('click', () => { if (P.busy) return; P.phase = 'aim'; setStatus('pStatus', ''); pUI(); });
+['pN', 'pD', 'pH', 'pK'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pCheck(); } }));
+function pCheck() {
+  if (P.phase !== 'solve' || P.busy) return;
+  const { p, q } = P.pos, h = P.vh, k = P.vk, sq = (p - h) ** 2, A = F(q - k, sq);
+  const n = readNum('pN'), dRaw = $('pD').value.trim(), d = dRaw === '' ? 1 : Number(dRaw);
+  const hh = readNum('pH'), kk = readNum('pK');
+  if ([n, hh, kk].some(isNaN)) { setStatus('pStatus', 'Fill in every blank. Leave the bottom of the fraction empty if a is a whole number.', 'bad'); return; }
+  if (![n, d, hh, kk].every(Number.isInteger)) { setStatus('pStatus', 'Use whole numbers, with a written as a fraction.', 'bad'); return; }
+  if (d === 0) { setStatus('pStatus', 'The denominator can\'t be 0.', 'bad'); return; }
+  const okH = hh === h, okK = kk === k, okA = n * A.d === A.n * d;
+  const mark = (ids, ok) => ids.forEach(id => { $(id).classList.remove('ok', 'bad'); $(id).classList.add(ok ? 'ok' : 'bad'); });
+  mark(['pN', 'pD'], okA); mark(['pH'], okH); mark(['pK'], okK);
+  if (okA && okH && okK) {
+    ['pN', 'pD', 'pH', 'pK'].forEach(id => { $(id).disabled = true; });
+    const reduced = F(n, d), note = (reduced.n !== n || reduced.d !== d) ? `<div>${int(n)}/${d} simplifies to ${fracHTML(A)}</div>` : '';
+    $('pFinal').innerHTML = `${note}<div>${vertexHTML(A, h, k)}</div><div>${standardHTML(A, bFrom(A, h), cFrom(A, h, k))}</div>`;
+    $('pFinal').hidden = false; $('pCheck').hidden = true; $('pFire').hidden = false;
+    setStatus('pStatus', 'Firing solution confirmed.', 'good');
+    $('pFire').focus();
+    return;
+  }
+  P.corr++; P.roundCorr++; pScore();
+  let hint;
+  if (!okH || !okK) {
+    hint = hh === -h && h !== 0
+      ? `Sign check on <i class="ch">h</i>: enter the vertex's x-coordinate exactly as it reads. The form already has the minus.`
+      : `<i class="ch">h</i> and <i class="ck">k</i> come from your vertex, (${int(h)}, ${int(k)}).`;
+  } else {
+    const v = n / d, Av = val(A);
+    if (Math.abs(v + Av) < 1e-9) hint = 'Check the sign. The arc opens down, so <i class="ca">a</i> is negative.';
+    else if (Math.abs(v - sq / (q - k)) < 1e-9) hint = `That's flipped. After substituting, divide by the squared number, ${sq}.`;
+    else if (q !== 0 && Math.abs(v - (-k / sq)) < 1e-9) hint = `The tank sits at <i>y</i> = ${int(q)}, not 0. Substitute ${int(q)} for <i>y</i>.`;
+    else hint = `Substitute the tank's point (${int(p)}, ${int(q)}) for <i>x</i> and <i>y</i>, then solve for <i class="ca">a</i>.`;
+  }
+  setStatus('pStatus', hint, 'bad');
+}
+$('pCheck').addEventListener('click', pCheck);
+function pFire() {
+  if (P.phase !== 'solve' || P.busy || !P.prev) return;
+  const { p } = P.pos, h = P.vh, k = P.vk, { an, dir } = P.prev, ep = S.epoch;
+  P.busy = true; $('pFire').disabled = true; pUI();
+  const launch = () => {
+    if (ep !== S.epoch) return;
+    S.tank.face = dir;
+    fireShell(h, k, an, p, dir, {
+      targets: P.targets,
+      onHit: hit => {
+        hit.alive = false; boom(hit.ex, hit.ey + .3, true);
+        stageMsg(`Target ${hit.id} destroyed`);
+        P.busy = false; $('pFire').disabled = false;
+        P.phase = 'aim'; P.vh = P.vk = null; P.prev = null;
+        setStatus('pStatus', 'Direct hit. Pick a new vertex, or move the tank first.', 'good');
+        pUI();
+        if (P.targets.every(t => !t.alive)) later(1.4, () =>
+          roundOverCard(`Round ${P.round} cleared`, `${P.targets.length} targets destroyed with ${plural(P.roundCorr, 'correction')}.`));
+      },
+      onEnd: () => { P.busy = false; $('pFire').disabled = false; pUI(); }
+    });
+  };
+  if (S.tank.goal !== null) S.tank.onArrive = launch; else launch();
+}
+$('pFire').addEventListener('click', pFire);
+function renderPro() {
+  const T = S.tank, { p, q } = P.pos;
+  if (P.phase === 'move') {
+    ctx.fillStyle = 'rgba(58,69,46,.75)';
+    P.spots.forEach(sp => { if (spotFree(sp)) { ctx.beginPath(); ctx.arc(X(sp.p), Y(sp.q) - 3, 3.5, 0, Math.PI * 2); ctx.fill(); } });
+  }
+  if (P.vh !== null && P.prev) {
+    const pr = P.prev, h = P.vh, k = P.vk;
+    ctx.setLineDash([6, 6]); ctx.strokeStyle = COL.ch; ctx.lineWidth = 1.8; line(X(h), 0, X(h), Y(terrainY(h))); ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(35,40,28,.3)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
+    curve(pr.an, h, k, WIN.x0, WIN.x1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = pr.hit ? COL.ca : COL.ink; ctx.lineWidth = 2.8;
+    curve(pr.an, h, k, p, pr.x); ctx.stroke();
+    if (pr.hit) {
+      ctx.strokeStyle = COL.ca; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(X(pr.hit.ex), Y(pr.hit.ey + .35), TS() * .85, 0, Math.PI * 2); ctx.stroke();
+    } else if (pr.landed) {
+      const lx = X(pr.x), ly = Y(terrainY(pr.x));
+      ctx.strokeStyle = COL.ck; ctx.lineWidth = 3;
+      line(lx - 7, ly - 7, lx + 7, ly + 7); line(lx - 7, ly + 7, lx + 7, ly - 7);
+    }
+  }
+  P.targets.forEach(t => {
+    drawTank(t.ex, t.ey, t.alive ? -.35 : .3, t.alive ? COL.enemy : COL.wreck, t.ex > T.x ? -1 : 1);
+    if (t.alive) tag(t.id, X(t.ex), Y(t.ey) - TS() * 1.35, COL.enemy, 'center');
+  });
+  drawPlayer();
+  tag(`tank (${int(p)}, ${int(q)})`, X(p), Y(q) - TS() * 1.7, COL.cc, 'center');
+  if (P.vh !== null) {
+    const px = X(P.vh), py = Y(P.vk);
+    ctx.fillStyle = '#FBF8EC'; ctx.strokeStyle = COL.ck; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = COL.ck; ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+    tag(`vertex (${int(P.vh)}, ${int(P.vk)})`, px + 14, py - 16, COL.ck, 'left');
+  }
+}
+
 /* ---------- MENU demo ---------- */
 function demoShot() {
   const h = (D.ex - 10) / 2, k = rint(3, 11), ep = S.epoch;
@@ -1224,18 +1486,37 @@ const MODES = { gunner: [G, gSelect], commander: [C, cSelect] };
 cv.addEventListener('pointerdown', e => {
   cv.focus({ preventScroll: true });
   if (S.mode === 'recruit') { R.drag = true; cv.setPointerCapture(e.pointerId); moveVertex(e); }
+  else if (S.mode === 'pro') {
+    const r = cv.getBoundingClientRect();
+    if (P.phase === 'move') pSetPos(pNearestSpot(iX(e.clientX - r.left)));
+    else if (P.phase === 'aim' && !P.busy) { P.drag = true; cv.setPointerCapture(e.pointerId); pVertexFromPointer(e); }
+  }
   else if (MODES[S.mode]) { const [M, sel] = MODES[S.mode]; const i = hitReticle(M, e); if (i >= 0) sel(i); }
 });
 cv.addEventListener('pointermove', e => {
   if (S.mode === 'recruit' && R.drag) moveVertex(e);
+  else if (S.mode === 'pro' && P.drag && P.phase === 'aim') pVertexFromPointer(e);
   else if (MODES[S.mode]) cv.style.cursor = hitReticle(MODES[S.mode][0], e) >= 0 ? 'pointer' : 'default';
 });
-['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => cv.addEventListener(ev, () => { R.drag = false; }));
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => cv.addEventListener(ev, () => { R.drag = false; P.drag = false; }));
 cv.addEventListener('keydown', e => {
   if (S.mode === 'recruit') {
     const mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
     if (mv) { e.preventDefault(); R.h = clamp(R.h + mv[0], -9, 10); R.k = clamp(R.k + mv[1], 1, 11); recruitUpdate(); }
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); recruitFire(); }
+  } else if (S.mode === 'pro') {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+    if (!d || P.busy) return;
+    e.preventDefault();
+    if (P.phase === 'move') {
+      const free = P.spots.filter(spotFree), cands = free.filter(sp => d[0] > 0 ? sp.p > P.pos.p : sp.p < P.pos.p);
+      if (cands.length) pSetPos(cands.reduce((a, b) => Math.abs(a.p - P.pos.p) < Math.abs(b.p - P.pos.p) ? a : b));
+    } else if (P.phase === 'aim') {
+      const h0 = P.vh !== null ? P.vh : P.pos.p + 3, k0 = P.vk !== null ? P.vk : P.pos.q + 5;
+      let h = h0 + d[0], k = k0 + d[1];
+      if (h === P.pos.p) h += d[0];
+      pSetVertex(h, k);
+    }
   } else if (MODES[S.mode]) {
     const i = '12345'.indexOf(e.key);
     if (i >= 0) { e.preventDefault(); MODES[S.mode][1](i); }
@@ -1252,6 +1533,7 @@ function update(dt) {
     else { T.x += Math.sign(dx) * step; T.face = Math.sign(dx); T.angGoal = -.25; }
   }
   if (S.mode === 'recruit' && !R.busy) T.angGoal = angHK(R.h, R.k);
+  if (S.mode === 'pro' && T.goal === null && P.prev) { T.angGoal = tankAngle(P.prev.an, P.vh, P.pos.p); T.face = P.prev.dir; }
   if (MODES[S.mode] && T.goal === null) {
     const M = MODES[S.mode][0], t = M.targets[M.sel];
     if (t && !M.busy) T.angGoal = tankAngle(val(t.a), t.h, t.p);
@@ -1265,7 +1547,7 @@ function update(dt) {
     for (let x = s.x; s.dir > 0 ? x <= nx : x >= nx; x += .04 * s.dir) {
       const y = s.an * (x - s.h) ** 2 + s.k;
       if (s.targets) for (const t of s.targets) {
-        if (t.alive && Math.hypot(x - t.tx, y - t.ty) < .45) { s.x = x; finished.push([s, t]); return false; }
+        if (t.alive && Math.hypot(x - t.tx, y - t.ty) < (t.r || .45)) { s.x = x; finished.push([s, t]); return false; }
       }
       if (Math.abs(x - s.x0) > .5 && y <= terrainY(x)) { s.x = x; finished.push([s, null, true]); return false; }
       if (x < WIN.x0 - .5 || x > WIN.x1 + .5 || y < WIN.y0 - 2) { s.x = x; finished.push([s, null, false]); return false; }
@@ -1304,6 +1586,7 @@ function render() {
     curve(g.an, g.h, g.k, g.x0, g.x1); ctx.stroke(); ctx.setLineDash([]);
   }
   if (S.mode === 'recruit') renderRecruit();
+  else if (S.mode === 'pro') renderPro();
   else if (MODES[S.mode]) renderTargets(MODES[S.mode][0]);
   else renderMenu();
 
@@ -1336,7 +1619,7 @@ function frame(now) {
 }
 
 const startMode = new URLSearchParams(location.search).get('mode');
-setMode(['recruit', 'gunner', 'commander'].includes(startMode) ? startMode : 'menu');
+setMode(['recruit', 'gunner', 'commander', 'pro'].includes(startMode) ? startMode : 'menu');
 requestAnimationFrame(frame);
 })();
 </script>
